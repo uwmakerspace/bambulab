@@ -7,6 +7,7 @@ use futures::stream::StreamExt;
 use tokio::sync::broadcast::Sender;
 
 use crate::{command::Command, message::Message, parser::parse_message};
+use crate::signing::sign_payload_str;
 
 #[derive(Clone)]
 pub struct Client {
@@ -153,8 +154,13 @@ impl Client {
     /// Returns an error if there was a problem publishing the command.
     pub async fn publish(&self, command: Command) -> Result<(), Box<dyn std::error::Error>> {
         let payload = command.get_payload();
+        let signed_payload = sign_payload_str(&payload)?;
 
-        let msg = paho_mqtt::Message::new(&self.topic_device_request, payload, paho_mqtt::QOS_0);
+        let msg = paho_mqtt::Message::new(
+            &self.topic_device_request,
+            signed_payload,
+            paho_mqtt::QOS_0,
+        );
         self.mqtt.publish(msg).await?;
 
         Ok(())

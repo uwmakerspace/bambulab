@@ -85,16 +85,26 @@ pub struct PrintData {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrintUpload {
-    pub status: String,
-    pub progress: i64,
-    pub message: String,
+    pub status: Option<String>,
+    pub progress: Option<i64>,
+    pub message: Option<String>,
+    pub file_size: Option<i64>,
+    pub finish_size: Option<i64>,
+    pub oss_url: Option<String>,
+    pub sequence_id: Option<String>,
+    pub speed: Option<i64>,
+    pub task_id: Option<String>,
+    pub time_remaining: Option<i64>,
+    pub trouble_id: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrintOnline {
-    pub ahb: bool,
-    pub rfid: bool,
-    pub version: i64,
+    pub ahb: Option<bool>,
+    pub rfid: Option<bool>,
+    pub ext: Option<bool>,
+    pub ctc: Option<bool>,
+    pub version: Option<i64>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -155,26 +165,32 @@ pub struct PrintIpcam {
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PrintVtTray {
-    pub id: String,
-    pub tag_uid: String,
-    pub tray_id_name: String,
-    pub tray_info_idx: String,
-    pub tray_type: String,
-    pub tray_sub_brands: String,
-    pub tray_color: String,
-    pub tray_weight: String,
-    pub tray_diameter: String,
-    pub tray_temp: String,
-    pub tray_time: String,
-    pub bed_temp_type: String,
-    pub bed_temp: String,
-    pub nozzle_temp_max: String,
-    pub nozzle_temp_min: String,
-    pub xcam_info: String,
-    pub tray_uuid: String,
-    pub remain: i64,
-    pub k: f64,
-    pub n: i64,
+    pub id: Option<String>,
+    pub tag_uid: Option<String>,
+    pub tray_id_name: Option<String>,
+    pub tray_info_idx: Option<String>,
+    pub tray_type: Option<String>,
+    pub tray_sub_brands: Option<String>,
+    pub tray_color: Option<String>,
+    pub tray_weight: Option<String>,
+    pub tray_diameter: Option<String>,
+    pub tray_temp: Option<String>,
+    pub tray_time: Option<String>,
+    pub bed_temp_type: Option<String>,
+    pub bed_temp: Option<String>,
+    pub nozzle_temp_max: Option<String>,
+    pub nozzle_temp_min: Option<String>,
+    pub xcam_info: Option<String>,
+    pub tray_uuid: Option<String>,
+    pub remain: Option<i64>,
+    pub k: Option<f64>,
+    pub n: Option<i64>,
+    pub cali_idx: Option<i64>,
+    pub cols: Option<Vec<Value>>,
+    pub ctype: Option<i64>,
+    pub drying_temp: Option<String>,
+    pub drying_time: Option<String>,
+    pub total_len: Option<i64>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -208,19 +224,23 @@ pub struct InfoData {
     pub command: String,
     pub sequence_id: String,
     pub module: Vec<InfoModule>,
-    pub result: String,
-    pub reason: String,
+    pub result: Option<String>,
+    pub reason: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InfoModule {
     pub name: String,
-    pub project_name: String,
+    #[serde(alias = "product_name")]
+    pub project_name: Option<String>,
     pub sw_ver: String,
     pub hw_ver: String,
     pub sn: String,
     pub loader_ver: Option<String>,
     pub ota_ver: Option<String>,
+    pub new_ver: Option<String>,
+    pub flag: Option<i64>,
+    pub visible: Option<bool>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
