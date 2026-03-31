@@ -3,7 +3,6 @@ use std::time::Duration;
 #[cfg(feature = "verify-tls")]
 use std::{env::temp_dir, fs::File, io::Write};
 
-use futures::stream::StreamExt;
 use tokio::sync::broadcast::Sender;
 
 use crate::{command::Command, message::Message, parser::parse_message};
@@ -69,7 +68,7 @@ impl Client {
     ///
     /// Returns an error if there was a problem polling for a message or parsing the event.
     async fn poll(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let msg_opt = self.stream.next().await.flatten();
+        let msg_opt = self.stream.recv().await.ok().flatten();
 
         if let Some(msg) = msg_opt {
             self.tx.send(parse_message(&msg))?;
@@ -116,7 +115,7 @@ impl Client {
             .keep_alive_interval(Duration::from_secs(5))
             .connect_timeout(Duration::from_secs(3))
             .user_name("bblp")
-            .password(&self.access_code)
+            .password(self.access_code.as_bytes())
             .finalize();
 
         self.tx.send(Message::Connecting)?;
