@@ -1,16 +1,25 @@
+use crate::message::Print;
+use crate::print_data_parse::parse_print_data_from_value;
 use crate::Message;
 
-pub(crate) fn parse_message(message: &paho_mqtt::Message) -> Message {
-    let payload = message.payload();
-
+pub(crate) fn parse_message(payload: &[u8]) -> Message {
     if let Ok(parsed_message) = serde_json::from_slice::<Message>(payload) {
-        parsed_message
-    } else {
-        if let Ok(message_str) = String::from_utf8(payload.to_vec()) {
-            return Message::Unknown(Some(message_str));
-        }
-        Message::Unknown(None)
+        return parsed_message;
     }
+
+    let Ok(message_str) = String::from_utf8(payload.to_vec()) else {
+        return Message::Unknown(None);
+    };
+
+    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&message_str) {
+        if let Some(p) = val.get("print") {
+            if let Some(data) = parse_print_data_from_value(p) {
+                return Message::Print(Box::new(Print { print: data }));
+            }
+        }
+    }
+
+    Message::Unknown(Some(message_str))
 }
 
 #[cfg(test)]
@@ -19,14 +28,8 @@ mod tests {
 
     #[test]
     fn test_parse_message_unknown_string() {
-        let message = paho_mqtt::Message::new(
-            "device/123456789/report",
-            r#"{ "hello": "world" }"#,
-            paho_mqtt::QOS_2,
-        );
-
-        let result = parse_message(&message);
-
+        let payload = br#"{ "hello": "world" }"#;
+        let result = parse_message(payload);
         assert_eq!(
             result,
             Message::Unknown(Some(r#"{ "hello": "world" }"#.to_string()))
@@ -35,32 +38,20 @@ mod tests {
 
     #[test]
     fn test_parse_message_unknown_unparsable() {
-        let message =
-            paho_mqtt::Message::new("device/123456789/report", vec![255, 255], paho_mqtt::QOS_2);
-
-        let result = parse_message(&message);
-
+        let result = parse_message(&[255, 255]);
         assert_eq!(result, Message::Unknown(None));
     }
 
     #[test]
     fn test_parse_message_print() {
-        let message = paho_mqtt::Message::new(
-            "device/123456789/report",
-            r#"{ "print": { "bed_temper": 17.40625, "wifi_signal": "-59dBm", "command": "push_status", "msg": 1, "sequence_id": "694" } }"#,
-            paho_mqtt::QOS_2,
-        );
-
-        let result = parse_message(&message);
-
+        let payload = br#"{ "print": { "bed_temper": 17.40625, "wifi_signal": "-59dBm", "command": "push_status", "msg": 1, "sequence_id": "694" } }"#;
+        let result = parse_message(payload);
         assert!(matches!(result, Message::Print(_)));
     }
 
     #[test]
     fn test_parse_message_info() {
-        let message = paho_mqtt::Message::new(
-            "device/123456789/report",
-            r#"{
+        let payload = br#"{
                 "info":{
                     "command":"get_version",
                     "sequence_id":"0",
@@ -76,40 +67,28 @@ mod tests {
                     "result":"success",
                     "reason":""
                 }
-            }"#,
-            paho_mqtt::QOS_2,
-        );
-
-        let result = parse_message(&message);
-
+            }"#;
+        let result = parse_message(payload);
         assert!(matches!(result, Message::Info(_)));
     }
 
     #[test]
     fn test_parse_message_system() {
-        let message = paho_mqtt::Message::new(
-            "device/123456789/report",
-            r#"{
+        let payload = br#"{
                 "system": {
                   "command": "get_access_code",
                   "sequence_id": "0",
                   "access_code": "12312312",
                   "result": "success"
                 }
-              }"#,
-            paho_mqtt::QOS_2,
-        );
-
-        let result = parse_message(&message);
-
+              }"#;
+        let result = parse_message(payload);
         assert!(matches!(result, Message::System(_)));
     }
 
     #[test]
     fn test_parse_message_info_with_product_name_and_missing_result_reason() {
-        let message = paho_mqtt::Message::new(
-            "device/123456789/report",
-            r#"{
+        let payload = br#"{
                                 "info": {
                                     "command": "get_version",
                                     "sequence_id": "0",
@@ -126,20 +105,28 @@ mod tests {
                                         }
                                     ]
                                 }
-                            }"#,
-            paho_mqtt::QOS_2,
-        );
-
-        let result = parse_message(&message);
-
+                            }"#;
+        let result = parse_message(payload);
         assert!(matches!(result, Message::Info(_)));
     }
 
     #[test]
+    fn test_parse_message_print_lenient_when_strict_nested_types_fail() {
+        let payload =
+            br#"{"print":{"gcode_state":"RUNNING","mc_percent":42,"online":"not-an-object"}}"#;
+        let result = parse_message(payload);
+        match result {
+            Message::Print(p) => {
+                assert_eq!(p.print.gcode_state.as_deref(), Some("RUNNING"));
+                assert_eq!(p.print.mc_percent, Some(42));
+            }
+            other => panic!("expected Print, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn test_parse_message_print_with_h2d_shape() {
-        let message = paho_mqtt::Message::new(
-            "device/123456789/report",
-            r#"{
+        let payload = br#"{
                                 "print": {
                                     "command": "push_status",
                                     "online": {
@@ -182,12 +169,8 @@ mod tests {
                                         "total_len": 330000
                                     }
                                 }
-                            }"#,
-            paho_mqtt::QOS_2,
-        );
-
-        let result = parse_message(&message);
-
+                            }"#;
+        let result = parse_message(payload);
         assert!(matches!(result, Message::Print(_)));
     }
 }

@@ -161,6 +161,10 @@ pub struct PrintIpcam {
     pub ipcam_record: Option<String>,
     pub timelapse: Option<String>,
     pub mode_bits: Option<i64>,
+    /// When present, often `rtsps://…/streaming/live/1` when LAN RTSPS is allowed, or `"disable"`.
+    pub rtsp_url: Option<String>,
+    pub resolution: Option<String>,
+    pub tutk_server: Option<String>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]

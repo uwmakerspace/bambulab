@@ -6,7 +6,6 @@ use std::{env::temp_dir, fs::File, io::Write};
 use tokio::sync::broadcast::Sender;
 
 use crate::{command::Command, message::Message, parser::parse_message};
-use crate::signing::sign_payload_str;
 
 #[derive(Clone)]
 pub struct Client {
@@ -30,7 +29,18 @@ impl Client {
     ///
     /// Panics if the MQTT client cannot be created.
     pub fn new<S: Into<String>>(ip: S, access_code: S, serial: S, tx: Sender<Message>) -> Self {
-        let host = format!("mqtts://{}:8883", ip.into());
+        Self::new_with_mqtt_port(ip, access_code, serial, 8883, tx)
+    }
+
+    /// Like [`Client::new`] but uses the given MQTT TLS port (typically 8883).
+    pub fn new_with_mqtt_port<S: Into<String>>(
+        ip: S,
+        access_code: S,
+        serial: S,
+        mqtt_port: u16,
+        tx: Sender<Message>,
+    ) -> Self {
+        let host = format!("mqtts://{}:{mqtt_port}", ip.into());
         let access_code = access_code.into();
         let serial = serial.into();
 
@@ -71,7 +81,7 @@ impl Client {
         let msg_opt = self.stream.recv().await.ok().flatten();
 
         if let Some(msg) = msg_opt {
-            self.tx.send(parse_message(&msg))?;
+            self.tx.send(parse_message(msg.payload()))?;
         } else {
             // A "None" means we were disconnected. Try to reconnect...
             self.tx.send(Message::Disconnected)?;
@@ -146,22 +156,35 @@ impl Client {
         }
     }
 
+    #[must_use]
+    pub fn is_connected(&self) -> bool {
+        self.mqtt.is_connected()
+    }
+
+    /// Connect and subscribe to the device report topic; used for LAN reachability probes.
+    pub async fn connect_once(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        self.connect().await?;
+        self.subscibe_to_device_report();
+        Ok(())
+    }
+
     /// Publishes a command to the Bambu MQTT broker.
     ///
     /// # Errors
     ///
     /// Returns an error if there was a problem publishing the command.
     pub async fn publish(&self, command: Command) -> Result<(), Box<dyn std::error::Error>> {
-        let payload = command.get_payload();
-        let signed_payload = sign_payload_str(&payload)?;
+        self.publish_raw_json(&command.get_payload()).await
+    }
 
+    /// Publish an arbitrary JSON string to the device request topic.
+    pub async fn publish_raw_json(&self, payload: &str) -> Result<(), Box<dyn std::error::Error>> {
         let msg = paho_mqtt::Message::new(
             &self.topic_device_request,
-            signed_payload,
+            payload,
             paho_mqtt::QOS_0,
         );
         self.mqtt.publish(msg).await?;
-
         Ok(())
     }
 }

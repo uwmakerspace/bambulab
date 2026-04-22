@@ -8,6 +8,13 @@ description = "API client for Bambu Lab printers"
 license = "MIT OR Apache-2.0"
 keywords = ["3d-printer", "api", "client", "mqtt", "bambu"]
 categories = ["network-programming", "api-bindings"]
+include = [
+    "Cargo.toml",
+    "CHANGELOG.md",
+    "README.md",
+    "src/**/*",
+    "certs/**/*.pem",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,9 +24,16 @@ futures = { version = "0.3.31", default-features = false }
 nanoid = "0.4.0"
 openssl = "0.10.76"
 paho-mqtt = { version = "0.14.0" }
+rustls = { version = "0.23", features = ["aws-lc-rs", "std"] }
+rustls-pemfile = "2.2"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.149" }
-tokio = { version = "1.49.0", features = ["macros", "sync", "time"] }
+thiserror = "2.0"
+tokio = { version = "1.49.0", features = ["io-util", "macros", "net", "sync", "time"] }
+tokio-rustls = "0.26"
+tracing = "0.1"
+url = "2.5"
+webpki-roots = "1.0"
 
 [dev-dependencies]
 tokio = { version = "1.49.0", features = ["full"] }
